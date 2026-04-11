@@ -1,6 +1,9 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\AdminInvitation;
+use App\Models\Category;
+use App\Models\Video;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /*
@@ -15,8 +18,16 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->use(DatabaseTransactions::class)
+    ->in('Feature', 'Unit');
+
+beforeEach(function () {
+    AdminInvitation::query()->delete();
+    Video::query()->delete();
+    Category::query()->delete();
+
+    $this->withoutVite();
+});
 
 /*
 |--------------------------------------------------------------------------

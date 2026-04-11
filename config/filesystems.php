@@ -60,6 +60,14 @@ return [
             'report' => false,
         ],
 
+        'stoyan_recovery' => [
+            'driver' => 'local',
+            'root' => storage_path('app/stoyan-recovery'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
