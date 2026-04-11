@@ -19,6 +19,28 @@ return [
         'backup_thumbnails_root' => base_path('assets/thumbnails'),
         'backup_screenshots_root' => base_path('assets/screenshots'),
         'ignored_files' => ['.DS_Store'],
+        'video_order_overrides' => [
+            'qdosan' => [
+                'STOYAN_KOLEV_E_BESEN_CHE_NQMA_WESTER_UNION.mp4',
+                'Stoyan Kolev psuva I otkacha s machete.mp4',
+                'Стоян Колев тряска ребро.mp4',
+            ],
+            'kaish' => [
+                'Stoyan Kolev Visualised.mp4',
+                'stoyan kolev is my fighter.mp4',
+                'СТОЯН КОЛЕВ ОВЛАДЯ ТЪМНАТА ЕНЕРГИЯ.mp4',
+                'Стоян Колев ЧУПИ И ЯДЕ ТЕЛЕФОНА 19.mp4',
+            ],
+            'vesel' => [
+                'Stoyan Kolev reketira stopadjii.mp4',
+                'Стоян Колев вилнее във фитнеса.mp4',
+                'Стоян Колев на лостове.mp4',
+                'Стоян Колев с брадвата прай въртележки.mp4',
+                'Стоян Колев се ебава с циганин.mp4',
+                'дебелия.mp4',
+
+            ],
+        ],
     ],
     'hotspots' => [
         [

@@ -66,7 +66,7 @@ const introOpen = computed(
         >
             <main class="w-full max-w-[760px]">
                 <article
-                    class="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-[0_24px_80px_rgba(41,33,23,0.12)]"
+                    class="overflow-hidden rounded-4xl border border-stone-200 bg-white shadow-[0_24px_80px_rgba(41,33,23,0.12)]"
                 >
                     <header
                         class="flex items-start justify-between gap-4 px-4 pt-4 pb-3 sm:px-5 sm:pt-5"
@@ -146,7 +146,9 @@ const introOpen = computed(
                             :image-url="homepageImageUrl"
                             :hotspots="hotspots"
                             :categories-by-hotspot="categoriesByHotspot"
-                            @hotspot-click="openHotspot(categoriesByHotspot, $event)"
+                            @hotspot-click="
+                                openHotspot(categoriesByHotspot, $event)
+                            "
                         />
 
                         <div
@@ -166,7 +168,7 @@ const introOpen = computed(
                             >
                                 <Heart
                                     :class="[
-                                        'h-4 w-4',
+                                        'size-4',
                                         isPostLiked
                                             ? 'fill-current text-rose-500'
                                             : 'text-stone-500',

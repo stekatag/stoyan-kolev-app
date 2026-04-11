@@ -9,6 +9,7 @@ use App\Models\Video;
 use App\Repositories\Contracts\CategoryRepositoryInterface;
 use App\Repositories\Contracts\VideoRepositoryInterface;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -99,8 +100,23 @@ class AssetCatalogImportService {
      * @return Collection<int, \SplFileInfo>
      */
     private function videoFilesForCategory(string $categoryDirectory): Collection {
-        return collect($this->filesystem->files($categoryDirectory))
-            ->sortBy(fn($file) => mb_strtolower($file->getFilename()))
+        $categorySlug = basename($categoryDirectory);
+        $files = collect($this->filesystem->files($categoryDirectory));
+        $filesByFilename = $files->keyBy(fn($file) => $file->getFilename());
+        $orderedFiles = collect(Arr::wrap(config("stoyan_kolev.import.video_order_overrides.{$categorySlug}")))
+            ->map(function (string $filename) use ($filesByFilename) {
+                $file = $filesByFilename->get($filename);
+
+                if ($file !== null) {
+                    $filesByFilename->forget($filename);
+                }
+
+                return $file;
+            })
+            ->filter();
+
+        return $orderedFiles
+            ->concat($filesByFilename->sortBy(fn($file) => mb_strtolower($file->getFilename())))
             ->values();
     }
 

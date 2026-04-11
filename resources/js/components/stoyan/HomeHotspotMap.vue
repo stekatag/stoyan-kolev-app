@@ -16,7 +16,7 @@ defineEmits<{
 
 <template>
     <div
-        class="relative overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white shadow-[0_14px_40px_rgba(58,43,16,0.14)]"
+        class="relative overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white"
     >
         <img
             :src="imageUrl"

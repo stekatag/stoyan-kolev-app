@@ -1,14 +1,19 @@
 <?php
 
+use App\Filament\Pages\ChangePassword;
+use App\Filament\Pages\ManageBrandAssets;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Videos\Pages\CreateVideo;
 use App\Filament\Resources\Videos\Pages\EditVideo;
+use App\Filament\Resources\Videos\Pages\ListVideos;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\Video;
+use App\Services\Media\MediaUrlResolver;
 use Filament\Actions\DeleteAction;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -122,6 +127,27 @@ test('admins can create videos without thumbnails in filament', function () {
         ->assertHasNoFormErrors();
 });
 
+test('admins can filter videos by category in filament', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $firstCategory = Category::factory()->create(['name' => 'Qdosan']);
+    $secondCategory = Category::factory()->create(['name' => 'Kaish']);
+    $firstVideo = Video::factory()->create([
+        'category_id' => $firstCategory->getKey(),
+        'title' => 'First Clip',
+    ]);
+    $secondVideo = Video::factory()->create([
+        'category_id' => $secondCategory->getKey(),
+        'title' => 'Second Clip',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListVideos::class)
+        ->filterTable('category_id', $firstCategory->getKey())
+        ->assertCanSeeTableRecords([$firstVideo])
+        ->assertCanNotSeeTableRecords([$secondVideo]);
+});
+
 test('admins can edit video metadata and replace uploaded assets in filament', function () {
     Storage::fake('public');
     Storage::fake('s3');
@@ -170,6 +196,38 @@ test('admins can edit video metadata and replace uploaded assets in filament', f
         ->and(Storage::disk('public')->exists('assets/' . $video->fresh()->thumbnail_path))->toBeTrue();
 });
 
+test('admins can see the current thumbnail while editing a video in filament', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    $admin = User::factory()->create(['is_admin' => true]);
+    $video = Video::factory()->create([
+        'thumbnail_path' => 'thumbnails/uploads/current-thumb.jpg',
+    ]);
+
+    Storage::disk('public')->put('assets/thumbnails/uploads/current-thumb.jpg', 'thumbnail');
+
+    $this->actingAs($admin);
+
+    $thumbnailUrl = app(MediaUrlResolver::class)->resolveThumbnailUrl($video);
+
+    Livewire::test(EditVideo::class, ['record' => $video->getKey()])
+        ->assertSee('Current thumbnail')
+        ->assertSee('thumbnails/uploads/current-thumb.jpg')
+        ->assertSee($thumbnailUrl, false);
+});
+
+test('change password page keeps the submit action separated from the form fields', function () {
+    $admin = User::factory()->create([
+        'is_admin' => true,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ChangePassword::class)
+        ->assertSeeHtml('class="flex pt-5"');
+});
+
 test('admins can delete videos in filament and cleanup stored assets', function () {
     Storage::fake('public');
     Storage::fake('s3');
@@ -196,4 +254,48 @@ test('admins can delete videos in filament and cleanup stored assets', function 
         ->and(Storage::disk('public')->exists('assets/thumbnails/uploads/delete-me.jpg'))->toBeFalse()
         ->and(Storage::disk('s3')->exists('assets/videos/uploads/delete-me.mp4'))->toBeFalse()
         ->and(Storage::disk('s3')->exists('assets/thumbnails/uploads/delete-me.jpg'))->toBeFalse();
+});
+
+test('admins can replace the shared profile image in filament', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    Storage::disk('public')->put('assets/profile/profile.jpg', 'old-public');
+    Storage::disk('s3')->put('assets/profile/profile.jpg', 'old-remote');
+
+    $this->actingAs($admin);
+
+    Livewire::test(ManageBrandAssets::class)
+        ->fillForm([
+            'profile_image' => UploadedFile::fake()->image('profile.jpg'),
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(Storage::disk('public')->exists('assets/profile/profile.jpg'))->toBeTrue()
+        ->and(Storage::disk('s3')->exists('assets/profile/profile.jpg'))->toBeTrue()
+        ->and(Storage::disk('public')->get('assets/profile/profile.jpg'))->not->toBe('old-public')
+        ->and(Storage::disk('s3')->get('assets/profile/profile.jpg'))->not->toBe('old-remote');
+});
+
+test('admins can change their password directly in filament', function () {
+    $admin = User::factory()->create([
+        'is_admin' => true,
+        'password' => 'old-password',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ChangePassword::class)
+        ->fillForm([
+            'current_password' => 'old-password',
+            'new_password' => 'new-password-123',
+            'password_confirmation' => 'new-password-123',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(Hash::check('new-password-123', $admin->fresh()->password))->toBeTrue();
 });

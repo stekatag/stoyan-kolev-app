@@ -22,7 +22,7 @@ defineEmits<{
         @click.self="$emit('close')"
     >
         <div
-            class="flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#121212] text-white shadow-[0_30px_90px_rgba(0,0,0,0.45)]"
+            class="flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-4xl border border-white/10 bg-[#121212] text-white shadow-[0_30px_90px_rgba(0,0,0,0.45)]"
         >
             <div
                 class="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-4 sm:px-6"

@@ -34,7 +34,7 @@ const requestFullscreen = async (): Promise<void> => {
     >
         <div
             ref="playerSurface"
-            class="relative flex h-[100dvh] w-screen items-center justify-center overflow-hidden bg-black text-white"
+            class="relative flex h-dvh w-screen items-center justify-center overflow-hidden bg-black text-white"
         >
             <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
                 <button
