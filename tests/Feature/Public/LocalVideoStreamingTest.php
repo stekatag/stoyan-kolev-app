@@ -1,19 +1,19 @@
 <?php
 
-use App\Enums\AssetStorageStatus;
 use App\Models\Category;
 use App\Models\Video;
+use Illuminate\Support\Facades\Storage;
 
 test('local video streaming endpoint supports byte range requests', function () {
+    Storage::disk('public')->put('assets/videos/Intro.mp4', 'test-video-content');
+
     $category = Category::factory()->create([
         'is_visible' => true,
     ]);
 
     $video = Video::factory()->create([
         'category_id' => $category->id,
-        'local_video_path' => 'assets/videos/Intro.mp4',
-        'video_storage_status' => AssetStorageStatus::LocalOnly,
-        'bucket_video_key' => null,
+        'video_path' => 'videos/Intro.mp4',
     ]);
 
     $this->withHeaders([

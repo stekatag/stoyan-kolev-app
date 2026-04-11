@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\AssetStorageStatus;
 use App\Models\Category;
 use App\Models\Video;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -22,17 +21,17 @@ test('multi-video categories open through the category modal payload', function 
             'title' => 'Clip One',
             'slug' => 'clip-one',
             'sort_order' => 1,
-            'video_storage_status' => AssetStorageStatus::LocalOnly,
+            'video_path' => 'videos/kaish/clip-one.mp4',
         ],
         [
             'category_id' => $category->getKey(),
             'title' => 'Clip Two',
             'slug' => 'clip-two',
             'sort_order' => 2,
-            'video_storage_status' => AssetStorageStatus::LocalOnly,
+            'video_path' => 'videos/kaish/clip-two.mp4',
         ],
     )->create([
-        'thumbnail_storage_status' => AssetStorageStatus::Missing,
+        'thumbnail_path' => null,
     ]);
 
     $this->get(route('home'))

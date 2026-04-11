@@ -48,18 +48,9 @@ class PublicCatalogService {
         }
 
         return [
-            'introVideoUrl' => $this->mediaUrlResolver->resolveConfiguredAssetUrl(
-                (string) config('stoyan_kolev.intro_video.bucket_key'),
-                (string) config('stoyan_kolev.intro_video.public_path'),
-            ),
-            'profileImageUrl' => $this->mediaUrlResolver->resolveConfiguredAssetUrl(
-                (string) config('stoyan_kolev.profile_image.bucket_key'),
-                (string) config('stoyan_kolev.profile_image.public_path'),
-            ),
-            'homepageImageUrl' => $this->mediaUrlResolver->resolveConfiguredAssetUrl(
-                (string) config('stoyan_kolev.homepage_image.bucket_key'),
-                (string) config('stoyan_kolev.homepage_image.public_path'),
-            ),
+            'introVideoUrl' => $this->mediaUrlResolver->resolveConfiguredAssetUrl('intro_video'),
+            'profileImageUrl' => $this->mediaUrlResolver->resolveConfiguredAssetUrl('profile_image'),
+            'homepageImageUrl' => $this->mediaUrlResolver->resolveConfiguredAssetUrl('homepage_image'),
             'hotspots' => config('stoyan_kolev.hotspots', []),
             'categoriesByHotspot' => $categoriesByHotspot,
         ];
@@ -70,8 +61,6 @@ class PublicCatalogService {
             return null;
         }
 
-        $segments = array_map(rawurlencode(...), explode('/', ltrim($path, '/')));
-
-        return '/storage/' . implode('/', $segments);
+        return $this->mediaUrlResolver->resolveAssetUrl($path);
     }
 }

@@ -7,12 +7,12 @@ use App\Services\Media\AdminMediaUploadService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-test('admin media upload service mirrors uploaded video assets to both disks', function () {
+test('admin media upload service stores canonical media paths and uploads bucket copies', function () {
     Video::query()->delete();
     Category::query()->delete();
 
+    Storage::fake('public');
     Storage::fake('s3');
-    Storage::fake('stoyan_recovery');
 
     $category = Category::factory()->create();
     $videoUpload = UploadedFile::fake()->create('clip.mp4', 2048, 'video/mp4');
@@ -28,9 +28,12 @@ test('admin media upload service mirrors uploaded video assets to both disks', f
     );
 
     expect($video->source_type)->toBe(VideoSourceType::AdminUpload)
-        ->and($video->category_id)->toBe($category->getKey());
+        ->and($video->category_id)->toBe($category->getKey())
+        ->and($video->video_path)->toStartWith('videos/uploads/')
+        ->and($video->thumbnail_path)->toStartWith('thumbnails/uploads/');
 
-    expect(Storage::disk('s3')->exists($video->bucket_video_key))->toBeTrue()
-        ->and(Storage::disk('stoyan_recovery')->exists($video->bucket_video_key))->toBeTrue()
-        ->and(Storage::disk('s3')->exists($video->bucket_thumbnail_key))->toBeTrue();
+    expect(Storage::disk('public')->exists('assets/' . $video->video_path))->toBeTrue()
+        ->and(Storage::disk('public')->exists('assets/' . $video->thumbnail_path))->toBeTrue()
+        ->and(Storage::disk('s3')->exists('assets/' . $video->video_path))->toBeTrue()
+        ->and(Storage::disk('s3')->exists('assets/' . $video->thumbnail_path))->toBeTrue();
 });

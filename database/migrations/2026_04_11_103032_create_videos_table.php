@@ -17,20 +17,16 @@ return new class extends Migration {
             $table->text('description')->nullable();
             $table->boolean('is_visible')->default(true);
             $table->unsignedInteger('sort_order')->default(0);
-            $table->string('bucket_video_key')->nullable();
-            $table->string('local_video_path')->nullable();
-            $table->string('bucket_thumbnail_key')->nullable();
-            $table->string('local_thumbnail_path')->nullable();
-            $table->string('video_storage_status')->default('missing');
-            $table->string('thumbnail_storage_status')->default('missing');
+            $table->string('video_path');
+            $table->string('thumbnail_path')->nullable();
             $table->string('source_type')->default('imported_asset');
             $table->string('original_filename')->nullable();
             $table->string('mime_type')->nullable();
-            $table->unsignedInteger('duration_seconds')->nullable();
             $table->timestamps();
 
             $table->index(['category_id', 'is_visible', 'sort_order']);
             $table->index('source_type');
+            $table->index('video_path');
         });
     }
 

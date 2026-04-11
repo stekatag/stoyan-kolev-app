@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\AssetStorageStatus;
 use App\Models\Video;
+use App\Services\Media\MediaPathService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PublicVideoStreamController extends Controller {
-    public function __invoke(Video $video): BinaryFileResponse {
-        abort_unless(
-            in_array($video->video_storage_status, [AssetStorageStatus::LocalOnly, AssetStorageStatus::BucketAndLocal], true)
-                && filled($video->local_video_path),
-            404,
-        );
+    public function __construct(
+        private readonly MediaPathService $mediaPathService,
+    ) {
+    }
 
-        $path = storage_path('app/public/' . ltrim((string) $video->local_video_path, '/'));
+    public function __invoke(Video $video): BinaryFileResponse {
+        abort_unless(filled($video->video_path), 404);
+
+        $path = storage_path('app/public/' . $this->mediaPathService->storagePath((string) $video->video_path));
 
         abort_unless(is_file($path), 404);
 

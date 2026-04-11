@@ -2,7 +2,7 @@
 
 namespace App\Services\Media;
 
-use App\Enums\AssetStorageStatus;
+use App\Models\Category;
 use App\Models\Video;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Collection;
@@ -12,6 +12,7 @@ use RuntimeException;
 class AssetSyncService {
     public function __construct(
         private readonly Filesystem $filesystem,
+        private readonly MediaPathService $mediaPathService,
     ) {
     }
 
@@ -27,35 +28,71 @@ class AssetSyncService {
         $result = new AssetSyncResult;
         $this->syncConfiguredAsset('homepage_image', $result, $progressCallback);
         $this->syncConfiguredAsset('intro_video', $result, $progressCallback);
+        $this->syncConfiguredAsset('profile_image', $result, $progressCallback);
+        $this->syncCategoryPreviews($result, $progressCallback);
         $this->syncVideos($result, $progressCallback);
 
         return $result;
     }
 
     private function syncConfiguredAsset(string $configKey, AssetSyncResult $result, ?callable $progressCallback = null): void {
-        $localPath = Storage::disk('public')->path((string) config("stoyan_kolev.{$configKey}.public_path"));
-        $bucketKey = (string) config("stoyan_kolev.{$configKey}.bucket_key");
+        $canonicalPath = $this->mediaPathService->configuredAssetCanonicalPath($configKey);
+        $storagePath = $this->mediaPathService->storagePath($canonicalPath);
+        $localPath = Storage::disk('public')->path($storagePath);
 
         if ($this->filesystem->exists($localPath)) {
-            $this->mirrorFile($localPath, $bucketKey, $result, $progressCallback);
+            $this->mirrorFile($localPath, $storagePath, $result, $progressCallback);
         }
     }
 
     private function syncVideos(AssetSyncResult $result, ?callable $progressCallback = null): void {
         /** @var Collection<int, Video> $videos */
-        $videos = Video::query()->whereNotNull('local_video_path')->get();
+        $videos = Video::query()->whereNotNull('video_path')->get();
 
         foreach ($videos as $video) {
-            $localVideoPath = Storage::disk('public')->path((string) $video->local_video_path);
+            $storagePath = $this->mediaPathService->storagePath((string) $video->video_path);
+            $localVideoPath = Storage::disk('public')->path($storagePath);
 
-            if ($this->filesystem->exists($localVideoPath) && filled($video->bucket_video_key)) {
-                $uploaded = $this->mirrorFile($localVideoPath, (string) $video->bucket_video_key, $result, $progressCallback);
+            if ($this->filesystem->exists($localVideoPath)) {
+                $this->mirrorFile(
+                    $localVideoPath,
+                    $storagePath,
+                    $result,
+                    $progressCallback,
+                );
+            }
 
-                if ($uploaded) {
-                    $video->forceFill([
-                        'video_storage_status' => AssetStorageStatus::BucketAndLocal,
-                    ])->save();
+            if (filled($video->thumbnail_path)) {
+                $storagePath = $this->mediaPathService->storagePath((string) $video->thumbnail_path);
+                $localThumbnailPath = Storage::disk('public')->path($storagePath);
+
+                if ($this->filesystem->exists($localThumbnailPath)) {
+                    $this->mirrorFile(
+                        $localThumbnailPath,
+                        $storagePath,
+                        $result,
+                        $progressCallback,
+                    );
                 }
+            }
+        }
+    }
+
+    private function syncCategoryPreviews(AssetSyncResult $result, ?callable $progressCallback = null): void {
+        /** @var Collection<int, Category> $categories */
+        $categories = Category::query()->whereNotNull('modal_preview_image_path')->get();
+
+        foreach ($categories as $category) {
+            $storagePath = $this->mediaPathService->storagePath((string) $category->modal_preview_image_path);
+            $localPreviewPath = Storage::disk('public')->path($storagePath);
+
+            if ($this->filesystem->exists($localPreviewPath)) {
+                $this->mirrorFile(
+                    $localPreviewPath,
+                    $storagePath,
+                    $result,
+                    $progressCallback,
+                );
             }
         }
     }
@@ -78,9 +115,6 @@ class AssetSyncService {
         }
 
         $result->bucketUploads++;
-
-        Storage::disk(config('stoyan_kolev.recovery_disk'))->put($bucketKey, $contents);
-        $result->recoveryCopies++;
 
         return true;
     }

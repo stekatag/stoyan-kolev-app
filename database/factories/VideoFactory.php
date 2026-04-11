@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\AssetStorageStatus;
 use App\Enums\VideoSourceType;
 use App\Models\Category;
 use App\Models\Video;
@@ -25,16 +24,11 @@ class VideoFactory extends Factory {
             'description' => fake()->sentence(),
             'is_visible' => true,
             'sort_order' => fake()->numberBetween(0, 20),
-            'bucket_video_key' => 'videos/' . fake()->uuid() . '.mp4',
-            'local_video_path' => 'assets/videos/' . fake()->slug() . '.mp4',
-            'bucket_thumbnail_key' => 'thumbnails/' . fake()->uuid() . '.jpg',
-            'local_thumbnail_path' => 'assets/screenshots/' . fake()->slug() . '.jpg',
-            'video_storage_status' => AssetStorageStatus::BucketAndLocal,
-            'thumbnail_storage_status' => AssetStorageStatus::BucketAndLocal,
+            'video_path' => 'videos/' . fake()->slug() . '/' . fake()->uuid() . '.mp4',
+            'thumbnail_path' => 'thumbnails/' . fake()->slug() . '.jpg',
             'source_type' => VideoSourceType::ImportedAsset,
             'original_filename' => fake()->slug() . '.mp4',
             'mime_type' => 'video/mp4',
-            'duration_seconds' => fake()->numberBetween(10, 600),
         ];
     }
 }

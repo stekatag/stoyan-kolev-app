@@ -2,16 +2,19 @@
 
 namespace App\Services\Media;
 
-use App\Enums\AssetStorageStatus;
 use App\Enums\VideoSourceType;
 use App\Models\Video;
 use App\Repositories\Contracts\VideoRepositoryInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 class AdminMediaUploadService {
-    public function __construct(private readonly VideoRepositoryInterface $videoRepository) {
+    public function __construct(
+        private readonly VideoRepositoryInterface $videoRepository,
+        private readonly MediaPathService $mediaPathService,
+    ) {
     }
 
     public function storeVideoUpload(
@@ -27,26 +30,8 @@ class AdminMediaUploadService {
         }
 
         $slug = $this->uniqueSlug($title);
-        $originalFileName = $this->sanitizeOriginalFileName($videoUpload->getClientOriginalName(), $slug, $videoUpload->getClientOriginalExtension());
-        $videoFileName = $slug . '.' . $videoUpload->getClientOriginalExtension();
-        $bucketVideoKey = 'stoyan/uploads/videos/' . $videoFileName;
-        $recoveryVideoKey = $bucketVideoKey;
-
-        Storage::disk(config('stoyan_kolev.bucket_disk'))->putFileAs('stoyan/uploads/videos', $videoUpload, $videoFileName, ['visibility' => 'public']);
-        Storage::disk(config('stoyan_kolev.recovery_disk'))->putFileAs('stoyan/uploads/videos', $videoUpload, $videoFileName);
-
-        $bucketThumbnailKey = null;
-        $localThumbnailPath = null;
-        $thumbnailStatus = AssetStorageStatus::Missing;
-
-        if ($thumbnailUpload !== null) {
-            $thumbnailFileName = $slug . '.' . $thumbnailUpload->getClientOriginalExtension();
-            $bucketThumbnailKey = 'stoyan/uploads/thumbnails/' . $thumbnailFileName;
-            Storage::disk(config('stoyan_kolev.bucket_disk'))->putFileAs('stoyan/uploads/thumbnails', $thumbnailUpload, $thumbnailFileName, ['visibility' => 'public']);
-            Storage::disk(config('stoyan_kolev.recovery_disk'))->putFileAs('stoyan/uploads/thumbnails', $thumbnailUpload, $thumbnailFileName);
-            $localThumbnailPath = 'storage/stoyan-recovery/stoyan/uploads/thumbnails/' . $thumbnailFileName;
-            $thumbnailStatus = AssetStorageStatus::BucketAndLocal;
-        }
+        $storedVideo = $this->storeVideoAsset($slug, $videoUpload);
+        $thumbnailPath = $thumbnailUpload === null ? null : $this->storeThumbnailAsset($slug, $thumbnailUpload);
 
         return $this->videoRepository->create([
             'category_id' => $categoryId,
@@ -55,17 +40,57 @@ class AdminMediaUploadService {
             'description' => null,
             'is_visible' => $isVisible,
             'sort_order' => $sortOrder,
-            'bucket_video_key' => $bucketVideoKey,
-            'local_video_path' => 'storage/stoyan-recovery/' . $recoveryVideoKey,
-            'bucket_thumbnail_key' => $bucketThumbnailKey,
-            'local_thumbnail_path' => $localThumbnailPath,
-            'video_storage_status' => AssetStorageStatus::BucketAndLocal,
-            'thumbnail_storage_status' => $thumbnailStatus,
+            'video_path' => $storedVideo['path'],
+            'thumbnail_path' => $thumbnailPath,
             'source_type' => VideoSourceType::AdminUpload,
-            'original_filename' => $originalFileName,
-            'mime_type' => $videoUpload->getClientMimeType(),
-            'duration_seconds' => null,
+            'original_filename' => $storedVideo['original_filename'],
+            'mime_type' => $storedVideo['mime_type'],
         ]);
+    }
+
+    public function updateVideo(
+        Video $video,
+        int $categoryId,
+        string $title,
+        ?UploadedFile $videoUpload = null,
+        ?UploadedFile $thumbnailUpload = null,
+        bool $isVisible = true,
+        int $sortOrder = 0,
+    ): Video {
+        $attributes = [
+            'category_id' => $categoryId,
+            'title' => $title,
+            'description' => $video->description,
+            'is_visible' => $isVisible,
+            'sort_order' => $sortOrder,
+        ];
+
+        if ($videoUpload !== null) {
+            $slug = $this->uniqueSlug($title);
+            $this->deleteCanonicalAsset($video->video_path);
+            $storedVideo = $this->storeVideoAsset($slug, $videoUpload);
+
+            $attributes['slug'] = $slug;
+            $attributes['video_path'] = $storedVideo['path'];
+            $attributes['original_filename'] = $storedVideo['original_filename'];
+            $attributes['mime_type'] = $storedVideo['mime_type'];
+            $attributes['source_type'] = VideoSourceType::AdminUpload;
+        }
+
+        if ($thumbnailUpload !== null) {
+            $slug = $attributes['slug'] ?? $video->slug;
+            $this->deleteCanonicalAsset($video->thumbnail_path);
+            $attributes['thumbnail_path'] = $this->storeThumbnailAsset($slug, $thumbnailUpload);
+        }
+
+        return $this->videoRepository->update($video, $attributes);
+    }
+
+    public function deleteVideo(Video $video): void {
+        $this->deleteCanonicalAsset($video->video_path);
+        $this->deleteCanonicalAsset($video->thumbnail_path);
+
+        $video->delete();
     }
 
     private function sanitizeOriginalFileName(string $originalFileName, string $slug, string $extension): string {
@@ -93,5 +118,63 @@ class AdminMediaUploadService {
         }
 
         return $slug;
+    }
+
+    /**
+     * @return array{path: string, original_filename: string, mime_type: string}
+     */
+    private function storeVideoAsset(string $slug, UploadedFile $videoUpload): array {
+        $videoFileName = $slug . '.' . $videoUpload->getClientOriginalExtension();
+        $videoPath = 'videos/uploads/' . $videoFileName;
+
+        $this->storeCanonicalAsset($videoPath, $videoUpload);
+
+        return [
+            'path' => $videoPath,
+            'original_filename' => $this->sanitizeOriginalFileName($videoUpload->getClientOriginalName(), $slug, $videoUpload->getClientOriginalExtension()),
+            'mime_type' => $videoUpload->getClientMimeType() ?: 'video/mp4',
+        ];
+    }
+
+    private function storeThumbnailAsset(string $slug, UploadedFile $thumbnailUpload): string {
+        $thumbnailFileName = $slug . '.' . $thumbnailUpload->getClientOriginalExtension();
+        $thumbnailPath = 'thumbnails/uploads/' . $thumbnailFileName;
+
+        $this->storeCanonicalAsset($thumbnailPath, $thumbnailUpload);
+
+        return $thumbnailPath;
+    }
+
+    private function storeCanonicalAsset(string $canonicalPath, UploadedFile $upload): void {
+        $storagePath = $this->mediaPathService->storagePath($canonicalPath);
+
+        Storage::disk('public')->putFileAs(
+            dirname($storagePath),
+            $upload,
+            basename($canonicalPath),
+        );
+
+        Storage::disk(config('stoyan_kolev.bucket_disk'))->putFileAs(
+            dirname($storagePath),
+            $upload,
+            basename($canonicalPath),
+            ['visibility' => 'public'],
+        );
+    }
+
+    private function deleteCanonicalAsset(?string $canonicalPath): void {
+        if (blank($canonicalPath)) {
+            return;
+        }
+
+        $storagePath = $this->mediaPathService->storagePath($canonicalPath);
+
+        Storage::disk('public')->delete($storagePath);
+
+        try {
+            Storage::disk(config('stoyan_kolev.bucket_disk'))->delete($storagePath);
+        } catch (Throwable) {
+            // Best-effort remote cleanup only.
+        }
     }
 }

@@ -2,16 +2,29 @@
 
 namespace App\Services\Media;
 
-use App\Enums\AssetStorageStatus;
 use App\Models\Video;
+use Illuminate\Support\Facades\Storage;
 
 class MediaUrlResolver {
+    public function __construct(
+        private readonly MediaPathService $mediaPathService,
+    ) {
+    }
+
+    public function resolveAssetUrl(?string $canonicalPath): ?string {
+        return $this->resolveCanonicalAssetUrl($canonicalPath);
+    }
+
     public function resolveVideoUrl(Video $video): ?string {
-        if ($this->shouldUseBucketUrl($video->video_storage_status, $video->bucket_video_key)) {
-            return $this->bucketUrl((string) $video->bucket_video_key);
+        if (blank($video->video_path)) {
+            return null;
         }
 
-        if ($this->shouldUseLocalUrl($video->video_storage_status, $video->local_video_path)) {
+        if ($this->canBuildBucketUrl()) {
+            return $this->bucketUrl($this->mediaPathService->storagePath((string) $video->video_path));
+        }
+
+        if ($this->localPublicAssetExists((string) $video->video_path)) {
             return route('videos.stream', $video, false);
         }
 
@@ -19,52 +32,31 @@ class MediaUrlResolver {
     }
 
     public function resolveThumbnailUrl(Video $video): ?string {
-        return $this->resolveAssetUrl($video->thumbnail_storage_status, $video->bucket_thumbnail_key, $video->local_thumbnail_path);
+        return $this->resolveCanonicalAssetUrl($video->thumbnail_path);
     }
 
-    public function resolveConfiguredAssetUrl(string $bucketKey, string $localPath): string {
-        if ($bucketKey !== '' && $this->canBuildBucketUrl()) {
-            return $this->bucketUrl($bucketKey);
-        }
-
-        return $this->resolveLocalPathUrl($localPath) ?? '';
+    public function resolveConfiguredAssetUrl(string $configKey): string {
+        return $this->resolveCanonicalAssetUrl($this->mediaPathService->configuredAssetCanonicalPath($configKey)) ?? '';
     }
 
-    private function resolveAssetUrl(AssetStorageStatus|string|null $status, ?string $bucketKey, ?string $localPath): ?string {
-        if ($this->shouldUseBucketUrl($status, $bucketKey)) {
-            return $this->bucketUrl($bucketKey);
+    private function resolveCanonicalAssetUrl(?string $canonicalPath): ?string {
+        if (blank($canonicalPath)) {
+            return null;
         }
 
-        if ($this->shouldUseLocalUrl($status, $localPath)) {
-            return $this->resolveLocalPathUrl($localPath);
+        if ($this->canBuildBucketUrl()) {
+            return $this->bucketUrl($this->mediaPathService->storagePath($canonicalPath));
+        }
+
+        if ($this->localPublicAssetExists($canonicalPath)) {
+            return $this->mediaPathService->publicUrl($canonicalPath);
         }
 
         return null;
     }
 
-    private function shouldUseBucketUrl(AssetStorageStatus|string|null $status, ?string $bucketKey): bool {
-        $resolvedStatus = $status instanceof AssetStorageStatus ? $status : AssetStorageStatus::tryFrom((string) $status);
-
-        return in_array($resolvedStatus, [AssetStorageStatus::BucketAndLocal, AssetStorageStatus::BucketOnly], true)
-            && filled($bucketKey)
-            && $this->canBuildBucketUrl();
-    }
-
-    private function shouldUseLocalUrl(AssetStorageStatus|string|null $status, ?string $localPath): bool {
-        $resolvedStatus = $status instanceof AssetStorageStatus ? $status : AssetStorageStatus::tryFrom((string) $status);
-
-        return in_array($resolvedStatus, [AssetStorageStatus::BucketAndLocal, AssetStorageStatus::LocalOnly], true)
-            && filled($localPath);
-    }
-
-    private function resolveLocalPathUrl(?string $localPath): ?string {
-        if (blank($localPath)) {
-            return null;
-        }
-
-        $segments = array_map(rawurlencode(...), explode('/', ltrim((string) $localPath, '/')));
-
-        return '/storage/' . implode('/', $segments);
+    private function localPublicAssetExists(string $canonicalPath): bool {
+        return Storage::disk('public')->exists($this->mediaPathService->storagePath($canonicalPath));
     }
 
     private function canBuildBucketUrl(): bool {

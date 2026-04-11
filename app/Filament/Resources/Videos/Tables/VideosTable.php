@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\Videos\Tables;
 
+use App\Models\Video;
+use App\Services\Media\AdminMediaUploadService;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -21,11 +25,9 @@ class VideosTable {
                 TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('video_storage_status')
-                    ->badge()
+                TextColumn::make('video_path')
                     ->searchable(),
-                TextColumn::make('thumbnail_storage_status')
-                    ->badge()
+                TextColumn::make('thumbnail_path')
                     ->searchable(),
                 TextColumn::make('source_type')
                     ->badge()
@@ -34,9 +36,6 @@ class VideosTable {
                     ->searchable(),
                 TextColumn::make('mime_type')
                     ->searchable(),
-                TextColumn::make('duration_seconds')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -49,7 +48,13 @@ class VideosTable {
             ->filters([
                 //
             ])
-            ->recordActions([])
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make()
+                    ->action(function (Video $record): void {
+                        app(AdminMediaUploadService::class)->deleteVideo($record);
+                    }),
+            ])
             ->toolbarActions([]);
     }
 }

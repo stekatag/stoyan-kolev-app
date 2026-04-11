@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Services\Media\MediaUrlResolver;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -30,6 +31,7 @@ class AdminPanelProvider extends PanelProvider {
                 'primary' => Color::Amber,
             ])
             ->brandName('Stoyan Kolev Admin')
+            ->favicon(app(MediaUrlResolver::class)->resolveConfiguredAssetUrl('profile_image'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

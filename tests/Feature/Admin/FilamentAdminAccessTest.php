@@ -3,9 +3,11 @@
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Videos\Pages\CreateVideo;
+use App\Filament\Resources\Videos\Pages\EditVideo;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\Video;
+use Filament\Actions\DeleteAction;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -99,8 +101,8 @@ test('admins can edit categories and manage the optional preview image', functio
 });
 
 test('admins can create videos without thumbnails in filament', function () {
+    Storage::fake('public');
     Storage::fake('s3');
-    Storage::fake('stoyan_recovery');
 
     $admin = User::factory()->create(['is_admin' => true]);
     $category = Category::factory()->create();
@@ -118,4 +120,80 @@ test('admins can create videos without thumbnails in filament', function () {
         ])
         ->call('create')
         ->assertHasNoFormErrors();
+});
+
+test('admins can edit video metadata and replace uploaded assets in filament', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    $admin = User::factory()->create(['is_admin' => true]);
+    $category = Category::factory()->create();
+    $otherCategory = Category::factory()->create();
+    $video = Video::factory()->create([
+        'category_id' => $category->getKey(),
+        'title' => 'Old Clip',
+        'slug' => 'old-clip',
+        'video_path' => 'videos/uploads/old-clip.mp4',
+        'thumbnail_path' => 'thumbnails/uploads/old-clip.jpg',
+    ]);
+
+    Storage::disk('public')->put('assets/videos/uploads/old-clip.mp4', 'old-video');
+    Storage::disk('public')->put('assets/thumbnails/uploads/old-clip.jpg', 'old-thumbnail');
+    Storage::disk('s3')->put('assets/videos/uploads/old-clip.mp4', 'old-video');
+    Storage::disk('s3')->put('assets/thumbnails/uploads/old-clip.jpg', 'old-thumbnail');
+
+    $this->actingAs($admin);
+
+    Livewire::test(EditVideo::class, ['record' => $video->getKey()])
+        ->fillForm([
+            'category_id' => $otherCategory->getKey(),
+            'title' => 'Updated Clip',
+            'video' => UploadedFile::fake()->create('new-clip.mp4', 1024, 'video/mp4'),
+            'thumbnail' => UploadedFile::fake()->image('new-clip.jpg'),
+            'is_visible' => false,
+            'sort_order' => 9,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($video->fresh())
+        ->category_id->toBe($otherCategory->getKey())
+        ->title->toBe('Updated Clip')
+        ->is_visible->toBeFalse()
+        ->sort_order->toBe(9)
+        ->video_path->not->toBe('videos/uploads/old-clip.mp4')
+        ->thumbnail_path->not->toBe('thumbnails/uploads/old-clip.jpg');
+
+    expect(Storage::disk('public')->exists('assets/videos/uploads/old-clip.mp4'))->toBeFalse()
+        ->and(Storage::disk('public')->exists('assets/thumbnails/uploads/old-clip.jpg'))->toBeFalse()
+        ->and(Storage::disk('public')->exists('assets/' . $video->fresh()->video_path))->toBeTrue()
+        ->and(Storage::disk('public')->exists('assets/' . $video->fresh()->thumbnail_path))->toBeTrue();
+});
+
+test('admins can delete videos in filament and cleanup stored assets', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    $admin = User::factory()->create(['is_admin' => true]);
+    $video = Video::factory()->create([
+        'video_path' => 'videos/uploads/delete-me.mp4',
+        'thumbnail_path' => 'thumbnails/uploads/delete-me.jpg',
+    ]);
+
+    Storage::disk('public')->put('assets/videos/uploads/delete-me.mp4', 'video');
+    Storage::disk('public')->put('assets/thumbnails/uploads/delete-me.jpg', 'thumbnail');
+    Storage::disk('s3')->put('assets/videos/uploads/delete-me.mp4', 'video');
+    Storage::disk('s3')->put('assets/thumbnails/uploads/delete-me.jpg', 'thumbnail');
+
+    $this->actingAs($admin);
+
+    Livewire::test(EditVideo::class, ['record' => $video->getKey()])
+        ->callAction(DeleteAction::class)
+        ->assertHasNoActionErrors();
+
+    expect(Video::query()->find($video->getKey()))->toBeNull()
+        ->and(Storage::disk('public')->exists('assets/videos/uploads/delete-me.mp4'))->toBeFalse()
+        ->and(Storage::disk('public')->exists('assets/thumbnails/uploads/delete-me.jpg'))->toBeFalse()
+        ->and(Storage::disk('s3')->exists('assets/videos/uploads/delete-me.mp4'))->toBeFalse()
+        ->and(Storage::disk('s3')->exists('assets/thumbnails/uploads/delete-me.jpg'))->toBeFalse();
 });

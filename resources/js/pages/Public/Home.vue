@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import { Ellipsis, Heart, Share2 } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import CategoryVideoModal from '@/components/stoyan/CategoryVideoModal.vue';
 import HomeHotspotMap from '@/components/stoyan/HomeHotspotMap.vue';
 import IntroVideoGate from '@/components/stoyan/IntroVideoGate.vue';
 import VideoPlayerModal from '@/components/stoyan/VideoPlayerModal.vue';
 import { useIntroVideoPreference } from '@/composables/useIntroVideoPreference';
-import type {
-    StoyanCategoriesByHotspot,
-    StoyanCategory,
-    StoyanHotspot,
-    StoyanVideo,
-} from '@/types';
+import { usePublicHomeModals } from '@/composables/usePublicHomeModals';
+import { usePublicPostActions } from '@/composables/usePublicPostActions';
+import type { StoyanCategoriesByHotspot, StoyanHotspot } from '@/types';
 
 type Props = {
     introVideoUrl: string;
@@ -23,18 +20,28 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-const postMenu = ref<HTMLElement | null>(null);
 
-const selectedCategory = ref<StoyanCategory | null>(null);
-const selectedVideo = ref<StoyanVideo | null>(null);
-const isPostLiked = ref(false);
-const shareFeedback = ref<string | null>(null);
-const isMenuOpen = ref(false);
-let shareFeedbackTimer: ReturnType<typeof window.setTimeout> | null = null;
+const {
+    selectedCategory,
+    selectedVideo,
+    openHotspot,
+    openVideo,
+    closeVideo,
+    closeCategory,
+} = usePublicHomeModals();
+
+const {
+    postMenu,
+    isPostLiked,
+    shareFeedback,
+    isMenuOpen,
+    toggleLike,
+    togglePostMenu,
+    sharePost,
+} = usePublicPostActions();
 
 const { introPreferenceReady, shouldShowIntro, dismissIntro } =
     useIntroVideoPreference();
-const likeStorageKey = 'stoyan-kolev:post-liked';
 
 const introOpen = computed(
     () =>
@@ -42,113 +49,6 @@ const introOpen = computed(
         shouldShowIntro.value &&
         props.introVideoUrl !== '',
 );
-
-onMounted(() => {
-    isPostLiked.value = window.localStorage.getItem(likeStorageKey) === '1';
-    window.addEventListener('pointerdown', handlePointerDown);
-});
-
-onBeforeUnmount(() => {
-    window.removeEventListener('pointerdown', handlePointerDown);
-
-    if (shareFeedbackTimer !== null) {
-        window.clearTimeout(shareFeedbackTimer);
-    }
-});
-
-const openHotspot = (hotspotKey: string): void => {
-    const category = props.categoriesByHotspot[hotspotKey] ?? null;
-
-    if (category === null) {
-        return;
-    }
-
-    if (category.opensDirectly && category.directVideo !== null) {
-        selectedVideo.value = category.directVideo;
-        selectedCategory.value = null;
-
-        return;
-    }
-
-    selectedCategory.value = category;
-};
-
-const openVideo = (video: StoyanVideo): void => {
-    selectedVideo.value = video;
-};
-
-const closeVideo = (): void => {
-    selectedVideo.value = null;
-};
-
-const closeCategory = (): void => {
-    selectedCategory.value = null;
-};
-
-const togglePostMenu = (): void => {
-    isMenuOpen.value = !isMenuOpen.value;
-};
-
-const toggleLike = (): void => {
-    isPostLiked.value = !isPostLiked.value;
-    window.localStorage.setItem(likeStorageKey, isPostLiked.value ? '1' : '0');
-    isMenuOpen.value = false;
-};
-
-const sharePost = async (): Promise<void> => {
-    const shareUrl = window.location.href;
-    const sharePayload = {
-        title: 'Stoyan Kolev',
-        text: 'Koi stoyan si dnes?',
-        url: shareUrl,
-    };
-
-    try {
-        if (
-            typeof navigator.share === 'function' &&
-            (typeof navigator.canShare !== 'function' ||
-                navigator.canShare(sharePayload))
-        ) {
-            await navigator.share(sharePayload);
-            shareFeedback.value = 'Share sheet opened.';
-        } else if (
-            navigator.clipboard &&
-            typeof navigator.clipboard.writeText === 'function'
-        ) {
-            await navigator.clipboard.writeText(shareUrl);
-            shareFeedback.value = 'Link copied to clipboard.';
-        } else {
-            shareFeedback.value = 'Sharing is not available on this device.';
-        }
-    } catch {
-        shareFeedback.value = 'Sharing was cancelled.';
-    }
-
-    isMenuOpen.value = false;
-    queueShareFeedbackReset();
-};
-
-function queueShareFeedbackReset(): void {
-    if (shareFeedbackTimer !== null) {
-        window.clearTimeout(shareFeedbackTimer);
-    }
-
-    shareFeedbackTimer = window.setTimeout(() => {
-        shareFeedback.value = null;
-    }, 2400);
-}
-
-function handlePointerDown(event: PointerEvent): void {
-    if (!(event.target instanceof Node)) {
-        return;
-    }
-
-    if (postMenu.value?.contains(event.target)) {
-        return;
-    }
-
-    isMenuOpen.value = false;
-}
 </script>
 
 <template>
@@ -246,7 +146,7 @@ function handlePointerDown(event: PointerEvent): void {
                             :image-url="homepageImageUrl"
                             :hotspots="hotspots"
                             :categories-by-hotspot="categoriesByHotspot"
-                            @hotspot-click="openHotspot"
+                            @hotspot-click="openHotspot(categoriesByHotspot, $event)"
                         />
 
                         <div

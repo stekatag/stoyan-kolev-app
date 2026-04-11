@@ -3,7 +3,7 @@
 use App\Models\AdminInvitation;
 use App\Models\Category;
 use App\Models\Video;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 /*
@@ -18,7 +18,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
-    ->use(DatabaseTransactions::class)
+    ->use(DatabaseMigrations::class)
     ->in('Feature', 'Unit');
 
 beforeEach(function () {

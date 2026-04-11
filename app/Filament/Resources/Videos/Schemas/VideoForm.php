@@ -19,7 +19,7 @@ class VideoForm {
                     ->required()
                     ->maxLength(255),
                 FileUpload::make('video')
-                    ->required(),
+                    ->required(fn(string $operation): bool => $operation === 'create'),
                 FileUpload::make('thumbnail')
                     ->image(),
                 Toggle::make('is_visible')

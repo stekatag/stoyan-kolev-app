@@ -1,8 +1,8 @@
 <?php
 
-use App\Enums\AssetStorageStatus;
 use App\Models\Category;
 use App\Models\Video;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the public home route is available without authentication', function () {
@@ -22,8 +22,8 @@ test('the public home route is available without authentication', function () {
         'title' => 'Only clip',
         'slug' => 'only-clip',
         'sort_order' => 1,
-        'video_storage_status' => AssetStorageStatus::LocalOnly,
-        'thumbnail_storage_status' => AssetStorageStatus::Missing,
+        'video_path' => 'videos/qdosan/only-clip.mp4',
+        'thumbnail_path' => null,
     ]);
 
     $response = $this->get(route('home'));
@@ -39,6 +39,16 @@ test('the public home route is available without authentication', function () {
             ->where('categoriesByHotspot.qdosan.videoCount', 1)
             ->where('categoriesByHotspot.qdosan.opensDirectly', true)
     );
+});
+
+test('the public home page uses the profile asset as the site favicon when bucket delivery is configured', function () {
+    Storage::fake('public');
+
+    config()->set('filesystems.disks.s3.url', 'https://cdn.example.com');
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('https://cdn.example.com/assets/profile/profile.jpg', false);
 });
 
 test('starter auth and settings routes are not exposed publicly', function () {
