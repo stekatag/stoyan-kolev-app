@@ -67,8 +67,8 @@ test('asset catalog import service is idempotent for imported videos', function 
             'Стоян Колев вилнее във фитнеса.mp4',
             'Стоян Колев на лостове.mp4',
             'Стоян Колев с брадвата прай въртележки.mp4',
-            'дебелия.mp4',
             'Стоян Колев се ебава с циганин.mp4',
+            'дебелия.mp4',
         ])
         ->and($veselVideos->pluck('thumbnail_path')->all())->toBe([
             'thumbnails/vesel/1.jpeg',

@@ -6,7 +6,7 @@ test('media path service derives one shared storage path from canonical paths', 
     $service = app(MediaPathService::class);
 
     expect($service->storagePath('videos/qdosan/only-clip.mp4'))->toBe('assets/videos/qdosan/only-clip.mp4')
-        ->and($service->storagePath('assets/screenshots/qdosan.png'))->toBe('assets/screenshots/qdosan.png')
+        ->and($service->storagePath('assets/thumbnails/qdosan/1.jpeg'))->toBe('assets/thumbnails/qdosan/1.jpeg')
         ->and($service->publicUrl('homepage/initial screen.png'))->toBe('/storage/assets/homepage/initial%20screen.png');
 });
 

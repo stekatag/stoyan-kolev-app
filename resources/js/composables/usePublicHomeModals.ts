@@ -1,5 +1,9 @@
 import { ref } from 'vue';
-import type { StoyanCategoriesByHotspot, StoyanCategory, StoyanVideo } from '@/types';
+import type {
+    StoyanCategoriesByHotspot,
+    StoyanCategory,
+    StoyanVideo,
+} from '@/types';
 
 export function usePublicHomeModals() {
     const selectedCategory = ref<StoyanCategory | null>(null);

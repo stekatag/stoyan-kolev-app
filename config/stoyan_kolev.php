@@ -17,7 +17,6 @@ return [
     'import' => [
         'backup_videos_root' => base_path('assets/videos'),
         'backup_thumbnails_root' => base_path('assets/thumbnails'),
-        'backup_screenshots_root' => base_path('assets/screenshots'),
         'ignored_files' => ['.DS_Store'],
         'video_order_overrides' => [
             'qdosan' => [

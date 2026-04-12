@@ -84,9 +84,7 @@ const introOpen = computed(
                                 >
                                     Stoyan Kolev
                                 </p>
-                                <p class="text-xs text-stone-500">
-                                    Meme post · Public
-                                </p>
+                                <p class="text-xs text-stone-500">Meme post</p>
                             </div>
                         </div>
 

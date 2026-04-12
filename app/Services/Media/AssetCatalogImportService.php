@@ -27,11 +27,10 @@ class AssetCatalogImportService {
         $result = new AssetCatalogImportResult;
         $videosRoot = (string) config('stoyan_kolev.import.backup_videos_root');
         $thumbnailsRoot = (string) config('stoyan_kolev.import.backup_thumbnails_root');
-        $screenshotsRoot = (string) config('stoyan_kolev.import.backup_screenshots_root');
 
         foreach ($this->filesystem->directories($videosRoot) as $categoryDirectory) {
             $slug = basename($categoryDirectory);
-            $previewImagePath = $this->resolveCategoryPreviewPath($slug, $thumbnailsRoot, $screenshotsRoot, $result);
+            $previewImagePath = $this->resolveCategoryPreviewPath($slug, $thumbnailsRoot, $result);
             $category = $this->categoryRepository->firstOrCreateBySlug($slug, [
                 'name' => Str::headline($slug),
                 'description' => null,
@@ -57,7 +56,7 @@ class AssetCatalogImportService {
                 $title = Str::headline(pathinfo($file->getFilename(), PATHINFO_FILENAME));
                 $slugBase = Str::slug($slug . '-' . pathinfo($file->getFilename(), PATHINFO_FILENAME));
                 $videoPath = 'videos/' . $slug . '/' . $file->getFilename();
-                $thumbnailPath = $this->resolveVideoThumbnailPath($slug, $index + 1, $thumbnailsRoot, $screenshotsRoot, $result);
+                $thumbnailPath = $this->resolveVideoThumbnailPath($slug, $index + 1, $thumbnailsRoot, $result);
 
                 $this->copyToPublicDisk($file->getPathname(), $videoPath, $result);
 
@@ -142,22 +141,18 @@ class AssetCatalogImportService {
     private function resolveCategoryPreviewPath(
         string $slug,
         string $thumbnailsRoot,
-        string $screenshotsRoot,
         AssetCatalogImportResult $result,
     ): ?string {
-        return $this->resolveNumberedThumbnailPath($slug, 1, $thumbnailsRoot, $result)
-            ?? $this->resolveLegacyScreenshotPath($slug, $screenshotsRoot, $result);
+        return $this->resolveNumberedThumbnailPath($slug, 1, $thumbnailsRoot, $result);
     }
 
     private function resolveVideoThumbnailPath(
         string $slug,
         int $sortOrder,
         string $thumbnailsRoot,
-        string $screenshotsRoot,
         AssetCatalogImportResult $result,
     ): ?string {
-        return $this->resolveNumberedThumbnailPath($slug, $sortOrder, $thumbnailsRoot, $result)
-            ?? $this->resolveLegacyScreenshotPath($slug, $screenshotsRoot, $result);
+        return $this->resolveNumberedThumbnailPath($slug, $sortOrder, $thumbnailsRoot, $result);
     }
 
     private function resolveNumberedThumbnailPath(
@@ -179,23 +174,6 @@ class AssetCatalogImportService {
             $this->copyToPublicDisk($candidate, $thumbnailPath, $result);
 
             return $thumbnailPath;
-        }
-
-        return null;
-    }
-
-    private function resolveLegacyScreenshotPath(string $slug, string $screenshotsRoot, AssetCatalogImportResult $result): ?string {
-        foreach (['png', 'jpg', 'jpeg', 'webp'] as $extension) {
-            $candidate = $screenshotsRoot . DIRECTORY_SEPARATOR . $slug . '.' . $extension;
-
-            if (!$this->filesystem->exists($candidate)) {
-                continue;
-            }
-
-            $previewPath = 'screenshots/' . $slug . '.' . $extension;
-            $this->copyToPublicDisk($candidate, $previewPath, $result);
-
-            return $previewPath;
         }
 
         return null;
