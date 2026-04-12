@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { X } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import VideoThumbnailCard from '@/components/stoyan/VideoThumbnailCard.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { StoyanCategory, StoyanVideo } from '@/types';
@@ -40,70 +40,40 @@ const skeletonCardCount = computed(() =>
     Math.max(props.category?.videos.length ?? 0, 3),
 );
 
-const areThumbnailImagesReady = ref(false);
+const showSkeleton = ref(false);
 
-let preloadRunId = 0;
+let skeletonTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-const preloadImage = (url: string): Promise<void> => {
-    if (typeof Image === 'undefined') {
-        return Promise.resolve();
+const clearSkeletonTimeout = (): void => {
+    if (skeletonTimeoutId !== null) {
+        clearTimeout(skeletonTimeoutId);
+        skeletonTimeoutId = null;
     }
-
-    return new Promise((resolve) => {
-        const image = new Image();
-
-        const finish = (): void => {
-            resolve();
-        };
-
-        image.onload = finish;
-        image.onerror = finish;
-        image.src = url;
-
-        if (image.complete) {
-            resolve();
-        }
-    });
 };
 
+onBeforeUnmount(() => {
+    clearSkeletonTimeout();
+});
+
 watch(
-    () => [
-        props.open,
-        props.category?.id ?? null,
-        props.category?.videos
-            .map((video) => video.thumbnailUrl ?? '')
-            .join('|') ?? '',
-    ],
+    () => [props.open, props.category?.id ?? null],
     async () => {
+        clearSkeletonTimeout();
+
         if (!isOpen.value || props.category === null) {
-            areThumbnailImagesReady.value = false;
+            showSkeleton.value = false;
 
             return;
         }
 
-        const thumbnailUrls = [
-            ...new Set(
-                props.category.videos
-                    .map((video) => video.thumbnailUrl)
-                    .filter((url): url is string => Boolean(url)),
-            ),
-        ];
+        showSkeleton.value = true;
 
-        if (thumbnailUrls.length === 0 || typeof window === 'undefined') {
-            areThumbnailImagesReady.value = true;
+        await nextTick();
 
-            return;
-        }
-
-        areThumbnailImagesReady.value = false;
-
-        const currentRunId = ++preloadRunId;
-
-        await Promise.all(thumbnailUrls.map((url) => preloadImage(url)));
-
-        if (currentRunId === preloadRunId) {
-            areThumbnailImagesReady.value = true;
-        }
+        skeletonTimeoutId = window.setTimeout(() => {
+            showSkeleton.value = false;
+            skeletonTimeoutId = null;
+        }, 220);
     },
     { immediate: true },
 );
@@ -171,27 +141,33 @@ watch(
                     <div
                         class="max-h-[calc(94dvh-88px)] overflow-y-auto overscroll-contain p-3 sm:p-5"
                     >
-                        <div
-                            v-if="!areThumbnailImagesReady"
-                            class="mx-auto grid max-w-5xl grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3"
-                        >
-                            <Skeleton
-                                v-for="index in skeletonCardCount"
-                                :key="index"
-                                class="aspect-[4/5] rounded-[1.7rem] bg-white/8"
-                            />
-                        </div>
+                        <div class="relative mx-auto max-w-5xl">
+                            <div
+                                class="grid grid-cols-1 gap-3 transition-opacity duration-200 min-[520px]:grid-cols-2 lg:grid-cols-3"
+                                :class="
+                                    showSkeleton
+                                        ? 'pointer-events-none opacity-0'
+                                        : 'opacity-100'
+                                "
+                            >
+                                <VideoThumbnailCard
+                                    v-for="video in category.videos"
+                                    :key="video.id"
+                                    :video="video"
+                                    @select="emit('selectVideo', $event)"
+                                />
+                            </div>
 
-                        <div
-                            v-else
-                            class="mx-auto grid max-w-5xl grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3"
-                        >
-                            <VideoThumbnailCard
-                                v-for="video in category.videos"
-                                :key="video.id"
-                                :video="video"
-                                @select="emit('selectVideo', $event)"
-                            />
+                            <div
+                                v-if="showSkeleton"
+                                class="absolute inset-0 grid grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-3"
+                            >
+                                <Skeleton
+                                    v-for="index in skeletonCardCount"
+                                    :key="index"
+                                    class="aspect-4/5 rounded-[1.7rem] bg-white/8"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

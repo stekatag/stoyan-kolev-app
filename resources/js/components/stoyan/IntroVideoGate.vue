@@ -33,6 +33,7 @@ defineEmits<{
                 controls
                 autoplay
                 playsinline
+                webkit-playsinline="true"
                 @ended="$emit('dismissed')"
             />
         </div>

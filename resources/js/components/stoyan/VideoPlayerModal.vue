@@ -58,14 +58,17 @@ const requestFullscreen = async (): Promise<void> => {
             <div class="flex h-full w-full items-center justify-center">
                 <video
                     v-if="video.videoUrl"
+                    :key="video.id"
                     class="h-full w-full bg-black object-contain"
-                    :src="video.videoUrl"
                     :poster="video.thumbnailUrl ?? undefined"
                     controls
                     autoplay
                     playsinline
+                    webkit-playsinline="true"
                     preload="metadata"
-                />
+                >
+                    <source :src="video.videoUrl" type="video/mp4" />
+                </video>
                 <div
                     v-else
                     class="flex h-full w-full items-center justify-center border border-dashed border-white/15 text-sm text-white/60"

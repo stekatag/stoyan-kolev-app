@@ -44,7 +44,7 @@ test('public catalog payload prefers bucket urls when bucket delivery is configu
         ->assertInertia(fn(Assert $page) => $page
             ->where('introVideoUrl', 'https://cdn.example.com/assets/intro/Intro.mp4')
             ->where('profileImageUrl', 'https://cdn.example.com/assets/profile/profile.jpg')
-            ->where('homepageImageUrl', 'https://cdn.example.com/assets/homepage/initial screen.png')
+            ->where('homepageImageUrl', 'https://cdn.example.com/assets/homepage/initial%20screen.png')
             ->where('categoriesByHotspot.qdosan.previewImageUrl', 'https://cdn.example.com/assets/thumbnails/qdosan/1.jpeg')
             ->where('categoriesByHotspot.qdosan.directVideo.videoUrl', 'https://cdn.example.com/assets/videos/qdosan/only-clip.mp4')
             ->where('categoriesByHotspot.qdosan.directVideo.thumbnailUrl', 'https://cdn.example.com/assets/thumbnails/qdosan/1.jpeg'));
