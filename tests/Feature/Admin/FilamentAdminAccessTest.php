@@ -38,6 +38,15 @@ test('admin users can access the filament panel', function () {
         ->assertOk();
 });
 
+test('admin users can see the change password user menu action', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)
+        ->get('/admin')
+        ->assertOk()
+        ->assertSee('Change Password');
+});
+
 test('admins can create categories in filament', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 

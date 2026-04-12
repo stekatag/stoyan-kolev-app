@@ -103,6 +103,14 @@ There is no public auth flow.
 - Admin invitations are created from the Filament panel.
 - Invite acceptance happens through signed URLs under `/admin/invitations/{token}`.
 
+To seed the bootstrap admin user (`admin@example.com` / `password`), run:
+
+```bash
+php artisan db:seed --class=AdminUserSeeder --force
+```
+
+The seeder will create or update that user and mark it as an admin.
+
 ## 🧪 Verification
 
 Useful project checks:
