@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Expand, X } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { X } from 'lucide-vue-next';
 import type { StoyanVideo } from '@/types';
 
 type Props = {
@@ -13,17 +12,6 @@ defineProps<Props>();
 defineEmits<{
     close: [];
 }>();
-
-const playerSurface = ref<HTMLElement | null>(null);
-const requestFullscreen = async (): Promise<void> => {
-    const surface = playerSurface.value;
-
-    if (surface === null || document.fullscreenElement === surface) {
-        return;
-    }
-
-    await surface.requestFullscreen?.();
-};
 </script>
 
 <template>
@@ -33,18 +21,9 @@ const requestFullscreen = async (): Promise<void> => {
         @click.self="$emit('close')"
     >
         <div
-            ref="playerSurface"
             class="relative flex h-dvh w-screen items-center justify-center overflow-hidden bg-black text-white"
         >
             <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
-                <button
-                    type="button"
-                    class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/55 backdrop-blur transition hover:bg-black/70"
-                    aria-label="Open fullscreen"
-                    @click="requestFullscreen"
-                >
-                    <Expand class="h-5 w-5" />
-                </button>
                 <button
                     type="button"
                     class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/55 backdrop-blur transition hover:bg-black/70"
