@@ -12,6 +12,7 @@ use Throwable;
 
 class AdminMediaUploadService {
     public function __construct(
+        private readonly BucketDiskResolver $bucketDiskResolver,
         private readonly VideoRepositoryInterface $videoRepository,
         private readonly MediaPathService $mediaPathService,
     ) {
@@ -154,7 +155,7 @@ class AdminMediaUploadService {
             basename($canonicalPath),
         );
 
-        Storage::disk(config('stoyan_kolev.bucket_disk'))->putFileAs(
+        Storage::disk($this->bucketDiskResolver->disk())->putFileAs(
             dirname($storagePath),
             $upload,
             basename($canonicalPath),
@@ -172,7 +173,7 @@ class AdminMediaUploadService {
         Storage::disk('public')->delete($storagePath);
 
         try {
-            Storage::disk(config('stoyan_kolev.bucket_disk'))->delete($storagePath);
+            Storage::disk($this->bucketDiskResolver->disk())->delete($storagePath);
         } catch (Throwable) {
             // Best-effort remote cleanup only.
         }

@@ -11,6 +11,7 @@ use RuntimeException;
 
 class AssetSyncService {
     public function __construct(
+        private readonly BucketDiskResolver $bucketDiskResolver,
         private readonly Filesystem $filesystem,
         private readonly MediaPathService $mediaPathService,
     ) {
@@ -21,7 +22,7 @@ class AssetSyncService {
 
         if ($missingConfiguration !== []) {
             throw new RuntimeException(
-                'S3 bucket storage is not fully configured. Missing: ' . implode(', ', $missingConfiguration) . '.'
+                'Bucket disk [' . $this->bucketDisk() . '] is not fully configured. Missing: ' . implode(', ', $missingConfiguration) . '.'
             );
         }
 
@@ -106,7 +107,7 @@ class AssetSyncService {
 
         $contents = $this->filesystem->get($sourcePath);
 
-        $uploaded = Storage::disk(config('stoyan_kolev.bucket_disk'))->put($bucketKey, $contents, ['visibility' => 'public']);
+        $uploaded = Storage::disk($this->bucketDisk())->put($bucketKey, $contents, ['visibility' => 'public']);
 
         if ($uploaded !== true) {
             $result->failedUploads++;
@@ -124,11 +125,11 @@ class AssetSyncService {
      */
     private function missingBucketConfiguration(): array {
         $requiredConfiguration = [
-            'AWS_ACCESS_KEY_ID' => config('filesystems.disks.s3.key'),
-            'AWS_SECRET_ACCESS_KEY' => config('filesystems.disks.s3.secret'),
-            'AWS_BUCKET' => config('filesystems.disks.s3.bucket'),
-            'AWS_ENDPOINT' => config('filesystems.disks.s3.endpoint'),
-            'AWS_DEFAULT_REGION' => config('filesystems.disks.s3.region'),
+            'key' => $this->bucketDiskConfigValue('key'),
+            'secret' => $this->bucketDiskConfigValue('secret'),
+            'bucket' => $this->bucketDiskConfigValue('bucket'),
+            'endpoint' => $this->bucketDiskConfigValue('endpoint'),
+            'region' => $this->bucketDiskConfigValue('region'),
         ];
 
         return collect($requiredConfiguration)
@@ -136,5 +137,13 @@ class AssetSyncService {
             ->keys()
             ->values()
             ->all();
+    }
+
+    private function bucketDiskConfigValue(string $key): string {
+        return $this->bucketDiskResolver->configValue($key);
+    }
+
+    private function bucketDisk(): string {
+        return $this->bucketDiskResolver->disk();
     }
 }

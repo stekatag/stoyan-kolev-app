@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminBrandAssetService {
     public function __construct(
+        private readonly BucketDiskResolver $bucketDiskResolver,
         private readonly MediaPathService $mediaPathService,
     ) {
     }
@@ -21,7 +22,7 @@ class AdminBrandAssetService {
             basename($canonicalPath),
         );
 
-        Storage::disk(config('stoyan_kolev.bucket_disk'))->putFileAs(
+        Storage::disk($this->bucketDiskResolver->disk())->putFileAs(
             dirname($storagePath),
             $profileImage,
             basename($canonicalPath),

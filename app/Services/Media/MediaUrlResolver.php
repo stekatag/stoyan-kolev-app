@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class MediaUrlResolver {
     public function __construct(
+        private readonly BucketDiskResolver $bucketDiskResolver,
         private readonly MediaPathService $mediaPathService,
     ) {
     }
@@ -61,27 +62,31 @@ class MediaUrlResolver {
 
     private function canBuildBucketUrl(): bool {
         return
-            (string) config('filesystems.disks.s3.url') !== ''
+            $this->bucketDiskConfigValue('url') !== ''
             || (
-                (string) config('filesystems.disks.s3.endpoint') !== ''
-                && (string) config('filesystems.disks.s3.bucket') !== ''
+                $this->bucketDiskConfigValue('endpoint') !== ''
+                && $this->bucketDiskConfigValue('bucket') !== ''
             );
     }
 
     private function bucketUrl(string $bucketKey): string {
-        $configuredUrl = rtrim((string) config('filesystems.disks.s3.url'), '/');
+        $configuredUrl = rtrim($this->bucketDiskConfigValue('url'), '/');
 
         if ($configuredUrl !== '') {
             return $configuredUrl . '/' . ltrim($bucketKey, '/');
         }
 
-        $endpoint = rtrim((string) config('filesystems.disks.s3.endpoint'), '/');
-        $bucket = (string) config('filesystems.disks.s3.bucket');
+        $endpoint = rtrim($this->bucketDiskConfigValue('endpoint'), '/');
+        $bucket = $this->bucketDiskConfigValue('bucket');
 
         if ($endpoint !== '' && $bucket !== '') {
             return $endpoint . '/' . $bucket . '/' . ltrim($bucketKey, '/');
         }
 
         return '/' . ltrim($bucketKey, '/');
+    }
+
+    private function bucketDiskConfigValue(string $key): string {
+        return $this->bucketDiskResolver->configValue($key);
     }
 }

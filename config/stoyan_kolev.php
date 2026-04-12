@@ -1,7 +1,6 @@
 <?php
 
 return [
-    'bucket_disk' => env('STOYAN_BUCKET_DISK', 's3'),
     'homepage_image' => [
         'canonical_path' => env('STOYAN_HOMEPAGE_IMAGE_CANONICAL_PATH', 'homepage/initial screen.png'),
         'backup_path' => env('STOYAN_HOMEPAGE_IMAGE_BACKUP_PATH', 'assets/initial screen/initial screen.png'),

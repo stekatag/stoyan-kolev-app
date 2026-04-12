@@ -55,6 +55,49 @@ test('the asset sync command fails fast when the bucket is not configured', func
     config()->set('filesystems.disks.s3.endpoint', null);
 
     $this->artisan('stoyan:sync-assets')
-        ->expectsOutputToContain('S3 bucket storage is not fully configured. Missing: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_ENDPOINT, AWS_DEFAULT_REGION.')
+        ->expectsOutputToContain('Bucket disk [s3] is not fully configured. Missing: key, secret, bucket, endpoint, region.')
         ->assertFailed();
+});
+
+test('the asset sync command uses the default filesystem disk when it is a cloud disk', function () {
+    Storage::fake('public');
+    Storage::fake('r2');
+
+    config()->set('filesystems.default', 'r2');
+    config()->set('filesystems.disks.s3.key', null);
+    config()->set('filesystems.disks.s3.secret', null);
+    config()->set('filesystems.disks.s3.region', null);
+    config()->set('filesystems.disks.s3.bucket', null);
+    config()->set('filesystems.disks.s3.endpoint', null);
+    config()->set('filesystems.disks.r2.key', 'cloud-key');
+    config()->set('filesystems.disks.r2.secret', 'cloud-secret');
+    config()->set('filesystems.disks.r2.region', 'auto');
+    config()->set('filesystems.disks.r2.bucket', 'cloud-bucket');
+    config()->set('filesystems.disks.r2.endpoint', 'https://cloudflare-r2.example');
+    config()->set('stoyan_kolev.homepage_image.canonical_path', 'homepage/initial screen.png');
+
+    Storage::disk('public')->put('assets/homepage/initial screen.png', 'image');
+
+    $this->artisan('stoyan:sync-assets')->assertSuccessful();
+
+    expect(Storage::disk('r2')->exists('assets/homepage/initial screen.png'))->toBeTrue();
+});
+
+test('the asset sync command still uses s3 when the default filesystem disk is local', function () {
+    Storage::fake('public');
+    Storage::fake('s3');
+
+    config()->set('filesystems.default', 'local');
+    config()->set('filesystems.disks.s3.key', 'test-key');
+    config()->set('filesystems.disks.s3.secret', 'test-secret');
+    config()->set('filesystems.disks.s3.region', 'auto');
+    config()->set('filesystems.disks.s3.bucket', 'test-bucket');
+    config()->set('filesystems.disks.s3.endpoint', 'https://example-r2.invalid');
+    config()->set('stoyan_kolev.homepage_image.canonical_path', 'homepage/initial screen.png');
+
+    Storage::disk('public')->put('assets/homepage/initial screen.png', 'image');
+
+    $this->artisan('stoyan:sync-assets')->assertSuccessful();
+
+    expect(Storage::disk('s3')->exists('assets/homepage/initial screen.png'))->toBeTrue();
 });
