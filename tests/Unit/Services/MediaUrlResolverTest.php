@@ -83,3 +83,28 @@ test('media url resolver still prefers the bucket when the default filesystem di
 
     expect($url)->toBe('https://cdn.example.com/assets/videos/example.mp4');
 });
+
+test('media url resolver percent-encodes bucket asset urls with spaces', function () {
+    config([
+        'filesystems.disks.s3.url' => 'https://cdn.example.com',
+    ]);
+
+    $url = app(MediaUrlResolver::class)->resolveAssetUrl('homepage/initial screen.png');
+
+    expect($url)->toBe('https://cdn.example.com/assets/homepage/initial%20screen.png');
+});
+
+test('media url resolver percent-encodes bucket video urls with unicode characters', function () {
+    config([
+        'filesystems.disks.s3.url' => 'https://cdn.example.com',
+    ]);
+
+    $video = Video::factory()->make([
+        'category_id' => null,
+        'video_path' => 'videos/vesel/Стоян Колев на лостове.mp4',
+    ]);
+
+    $url = app(MediaUrlResolver::class)->resolveVideoUrl($video);
+
+    expect($url)->toBe('https://cdn.example.com/assets/videos/vesel/%D0%A1%D1%82%D0%BE%D1%8F%D0%BD%20%D0%9A%D0%BE%D0%BB%D0%B5%D0%B2%20%D0%BD%D0%B0%20%D0%BB%D0%BE%D1%81%D1%82%D0%BE%D0%B2%D0%B5.mp4');
+});

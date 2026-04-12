@@ -70,23 +70,28 @@ class MediaUrlResolver {
     }
 
     private function bucketUrl(string $bucketKey): string {
+        $encodedBucketKey = $this->encodePathSegments($bucketKey);
         $configuredUrl = rtrim($this->bucketDiskConfigValue('url'), '/');
 
         if ($configuredUrl !== '') {
-            return $configuredUrl . '/' . ltrim($bucketKey, '/');
+            return $configuredUrl . '/' . ltrim($encodedBucketKey, '/');
         }
 
         $endpoint = rtrim($this->bucketDiskConfigValue('endpoint'), '/');
         $bucket = $this->bucketDiskConfigValue('bucket');
 
         if ($endpoint !== '' && $bucket !== '') {
-            return $endpoint . '/' . $bucket . '/' . ltrim($bucketKey, '/');
+            return $endpoint . '/' . $bucket . '/' . ltrim($encodedBucketKey, '/');
         }
 
-        return '/' . ltrim($bucketKey, '/');
+        return '/' . ltrim($encodedBucketKey, '/');
     }
 
     private function bucketDiskConfigValue(string $key): string {
         return $this->bucketDiskResolver->configValue($key);
+    }
+
+    private function encodePathSegments(string $path): string {
+        return implode('/', array_map(rawurlencode(...), explode('/', ltrim($path, '/'))));
     }
 }
