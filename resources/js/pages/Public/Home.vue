@@ -33,7 +33,6 @@ const {
 const {
     postMenu,
     isPostLiked,
-    shareFeedback,
     isMenuOpen,
     toggleLike,
     togglePostMenu,
@@ -185,13 +184,6 @@ const introOpen = computed(
                                 <span>Share</span>
                             </button>
                         </div>
-
-                        <p
-                            v-if="shareFeedback"
-                            class="mt-3 text-sm text-stone-500"
-                        >
-                            {{ shareFeedback }}
-                        </p>
                     </div>
                 </article>
             </main>

@@ -67,14 +67,21 @@ php artisan config:clear
 The app now stores one canonical relative path per asset.
 
 - Local public files are derived as `assets/{canonical_path}`.
-- Bucket keys are derived as `stoyan/{canonical_path}`.
-- Videos stream locally through `/videos/{video}/stream` so seeking works correctly.
+- Bucket objects use the same `assets/{canonical_path}` path.
+- Asset URLs resolve from the configured bucket first; when no bucket URL can be built, the app falls back to local public storage.
+- Local videos are served through `/videos/{video}/stream`, while images resolve directly from `/storage/assets/...`.
 
 Configured fixed assets currently resolve through canonical paths like these:
 
 - `homepage/initial screen.png`
 - `intro/Intro.mp4`
-- `profile/qdosan.png`
+- `profile/profile.jpg`
+
+Imported media follows the same pattern:
+
+- Category previews use `modal_preview_image_path`.
+- Video records store `video_path` and `thumbnail_path`.
+- Numbered thumbnails live under paths such as `thumbnails/qdosan/1.jpeg`.
 
 ## ☁️ Bucket Setup
 
@@ -86,7 +93,7 @@ Bucket syncing expects the S3-compatible disk configuration to be present. At mi
 - `AWS_ENDPOINT`
 - `AWS_DEFAULT_REGION`
 
-The sync command uploads the homepage image, intro video, profile image, and video files. Screenshot thumbnails are not synced.
+The sync command uploads the homepage image, intro video, profile image, category preview images, video files, and video thumbnails.
 
 ## 🔐 Admin Flow
 
